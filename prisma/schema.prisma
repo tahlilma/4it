@@ -1,0 +1,953 @@
+// HR & Payroll — Bangladesh RMG (BGMEA / BKMEA) compliant data model.
+//
+// Date conventions (see src/lib/dates.ts):
+//  * Date-only fields (dob, joinDate, attendance date, holidays …) are stored as UTC midnight.
+//  * Attendance wall-clock times (punches, in/out) are stored as "naive" UTC: the factory's
+//    local wall clock written as if it were UTC, so arithmetic never depends on server timezone.
+//  * System timestamps (createdAt, audit, sessions) are real instants.
+//
+// Coded values are plain strings; the allowed values live in src/lib/constants.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ───────────────────────────── Company & policy ─────────────────────────────
+
+model Company {
+  id                 Int     @id @default(autoincrement())
+  nameEn             String
+  nameBn             String  @default("")
+  addressEn          String  @default("")
+  addressBn          String  @default("")
+  phone              String  @default("")
+  email              String  @default("")
+  licenseNo          String  @default("") // factory licence / registration no. (statutory form headers)
+  bgmeaRegNo         String  @default("")
+  bkmeaRegNo         String  @default("")
+  hrHeadName         String  @default("")
+  hrHeadDesignation  String  @default("")
+  logoPath           String?
+
+  // Salary structure (RMG minimum-wage gazette pattern: gross = basic × 1.5 + medical + transport + food)
+  houseRentPercent   Float @default(50)
+  medicalAllowance   Float @default(750)
+  transportAllowance Float @default(450)
+  foodAllowance      Float @default(1250)
+
+  // Working time (Bangladesh Labour Act 2006 ss.100–108)
+  weeklyHoliday      Int     @default(5) // JS weekday: 0=Sun … 5=Fri
+  dailyOtLimit       Float   @default(2)
+  dailyHoursLimit    Float   @default(10)
+  weeklyHoursLimit   Float   @default(60)
+  holidayWorkAsOt    Boolean @default(true)
+  singlePunchPresent Boolean @default(true)
+
+  // Overtime (s.108, Rule 102: hourly OT = basic × 2 / 208)
+  otDivisor    Float @default(208)
+  otMultiplier Float @default(2)
+
+  // Deductions
+  absentBasis   String @default("BASIC") // BASIC | GROSS
+  absentDivisor String @default("30") // 30 | MONTH_DAYS
+  stampCash     Float  @default(10)
+  stampBank     Float  @default(0)
+
+  // Attendance bonus eligibility
+  attBonusMaxLate    Int     @default(3)
+  attBonusAllowLeave Boolean @default(false)
+
+  // Holiday duty allowance for staff who are not OT-eligible
+  holidayAllowBasis String @default("GROSS") // GROSS | BASIC | NONE
+
+  // Tiffin / night bills (per qualifying day)
+  tiffinWorker Float @default(35)
+  tiffinStaff  Float @default(50)
+  nightWorker  Float @default(100)
+  nightStaff   Float @default(150)
+
+  // Leave (s.115–117, Rule 107)
+  elDaysPerAccrual   Float  @default(18)
+  elMaxBalance       Float  @default(40)
+  elEligibleMonths   Int    @default(12)
+  elEncashMaxPercent Float  @default(50)
+  elRateBasis        String @default("GROSS") // GROSS | BASIC
+
+  // Employment
+  minHiringAge             Int    @default(18)
+  probationWorkerMonths    Int    @default(3)
+  probationStaffMonths     Int    @default(6)
+  incrementPercent         Float  @default(5)
+  serviceBenefitBasis      String @default("BASIC") // BASIC | GROSS
+  wageDueWorkingDays       Int    @default(7) // s.123
+  settlementDueWorkingDays Int    @default(30) // s.30
+  leftyAbsentDays          Int    @default(10) // s.27(3A)
+  tzOffsetMinutes          Int    @default(360) // Asia/Dhaka
+
+  updatedAt DateTime @updatedAt
+}
+
+model BankAccount {
+  id          Int     @id @default(autoincrement())
+  bankName    String
+  branch      String  @default("")
+  accountName String  @default("")
+  accountNo   String  @default("")
+  routingNo   String  @default("")
+  address     String  @default("")
+  active      Boolean @default(true)
+}
+
+// ───────────────────────────── Organisation ─────────────────────────────
+
+model Department {
+  id        Int     @id @default(autoincrement())
+  code      String  @default("")
+  nameEn    String
+  nameBn    String  @default("")
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  sections   Section[]
+  employees  Employee[]
+  budgets    ManpowerBudget[]
+  payslips   Payslip[]
+  bonusLines BonusLine[]
+}
+
+model Section {
+  id           Int        @id @default(autoincrement())
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  nameEn       String
+  nameBn       String     @default("")
+  sortOrder    Int        @default(0)
+  active       Boolean    @default(true)
+
+  employees  Employee[]
+  budgets    ManpowerBudget[]
+  payslips   Payslip[]
+  bonusLines BonusLine[]
+}
+
+model Floor {
+  id        Int     @id @default(autoincrement())
+  nameEn    String
+  nameBn    String  @default("")
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  lines     Line[]
+  employees Employee[]
+}
+
+model Line {
+  id        Int     @id @default(autoincrement())
+  nameEn    String
+  nameBn    String  @default("")
+  floorId   Int?
+  floor     Floor?  @relation(fields: [floorId], references: [id])
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  employees Employee[]
+  budgets   ManpowerBudget[]
+  payslips  Payslip[]
+}
+
+model MachineType {
+  id        Int     @id @default(autoincrement())
+  nameEn    String
+  nameBn    String  @default("")
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  employees Employee[]
+}
+
+model Grade {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  nameEn    String
+  nameBn    String  @default("")
+  empType   String  @default("WORKER")
+  minGross  Float   @default(0) // statutory / policy minimum gross for this grade
+  basic     Float   @default(0)
+  houseRent Float   @default(0)
+  medical   Float   @default(0)
+  transport Float   @default(0)
+  food      Float   @default(0)
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  designations   Designation[]
+  employees      Employee[]
+  payslips       Payslip[]
+  incrementsOld  Increment[]     @relation("IncrementOldGrade")
+  incrementsNew  Increment[]     @relation("IncrementNewGrade")
+  salaryHistory  SalaryHistory[]
+}
+
+model Designation {
+  id              Int     @id @default(autoincrement())
+  nameEn          String
+  nameBn          String  @default("")
+  empType         String  @default("WORKER") // WORKER | STAFF | MANAGEMENT
+  gradeId         Int?
+  grade           Grade?  @relation(fields: [gradeId], references: [id])
+  otEligible      Boolean @default(true)
+  attendanceBonus Float   @default(0)
+  sortOrder       Int     @default(0)
+  active          Boolean @default(true)
+
+  employees     Employee[]
+  budgets       ManpowerBudget[]
+  payslips      Payslip[]
+  bonusLines    BonusLine[]
+  incrementsOld Increment[]     @relation("IncrementOldDesignation")
+  incrementsNew Increment[]     @relation("IncrementNewDesignation")
+  salaryHistory SalaryHistory[]
+}
+
+model Shift {
+  id              Int     @id @default(autoincrement())
+  code            String  @unique
+  name            String
+  inTime          String // "HH:MM"
+  outTime         String // "HH:MM" (earlier than inTime ⇒ ends next day)
+  lateGraceMin    Int     @default(5)
+  earlyGraceMin   Int     @default(0)
+  breakMinutes    Int     @default(60)
+  otStartAfterMin Int     @default(0)
+  otRoundUnitMin  Int     @default(60)
+  otRoundUpMin    Int     @default(50)
+  tiffinAfter     String  @default("19:30")
+  nightAfter      String  @default("22:00")
+  windowBeforeMin Int     @default(240)
+  active          Boolean @default(true)
+
+  employees Employee[]
+}
+
+model Holiday {
+  id     Int      @id @default(autoincrement())
+  date   DateTime @unique
+  nameEn String
+  nameBn String   @default("")
+  type   String   @default("FESTIVAL") // FESTIVAL | GOVERNMENT | SPECIAL
+}
+
+model LeaveType {
+  id         Int     @id @default(autoincrement())
+  code       String  @unique // CL | SL | EL | ML | LWP | …
+  nameEn     String
+  nameBn     String  @default("")
+  annualDays Float   @default(0)
+  paid       Boolean @default(true)
+  accrual    String  @default("FIXED") // FIXED | EARNED | NONE
+  proRata    Boolean @default(true)
+  gender     String? // FEMALE ⇒ only for women
+  sortOrder  Int     @default(0)
+  active     Boolean @default(true)
+
+  applications LeaveApplication[]
+}
+
+model Team {
+  id              Int    @id @default(autoincrement())
+  code            String @unique
+  nameEn          String
+  nameBn          String @default("")
+  requiredPercent Float  @default(6) // Labour Rules r.55(10): each team ≥ 6 %
+  sortOrder       Int    @default(0)
+
+  members EmployeeTeam[]
+}
+
+model Buyer {
+  id                 Int     @id @default(autoincrement())
+  name               String
+  maxOtPerDay        Float   @default(2)
+  maxHoursPerWeek    Float   @default(60)
+  maxConsecutiveDays Int     @default(6)
+  notes              String  @default("")
+  active             Boolean @default(true)
+}
+
+model Device {
+  id           Int       @id @default(autoincrement())
+  name         String
+  ip           String
+  port         Int       @default(4370)
+  location     String    @default("")
+  serialNo     String    @default("")
+  active       Boolean   @default(true)
+  lastSyncAt   DateTime?
+  lastSyncNote String    @default("")
+
+  enrollments EmployeeDevice[]
+  punches     PunchLog[]
+}
+
+model ManpowerBudget {
+  id            Int          @id @default(autoincrement())
+  departmentId  Int
+  department    Department   @relation(fields: [departmentId], references: [id])
+  sectionId     Int?
+  section       Section?     @relation(fields: [sectionId], references: [id])
+  designationId Int?
+  designation   Designation? @relation(fields: [designationId], references: [id])
+  lineId        Int?
+  line          Line?        @relation(fields: [lineId], references: [id])
+  required      Int
+}
+
+// ───────────────────────────── Employees ─────────────────────────────
+
+model Employee {
+  id      Int    @id @default(autoincrement())
+  empCode String @unique // ID / card number printed everywhere
+  punchId Int    @unique // enrolment number on the punch machine
+
+  nameEn            String
+  nameBn            String    @default("")
+  fatherEn          String    @default("")
+  fatherBn          String    @default("")
+  motherEn          String    @default("")
+  motherBn          String    @default("")
+  spouseEn          String    @default("")
+  spouseBn          String    @default("")
+  gender            String    @default("MALE")
+  dob               DateTime
+  religion          String    @default("ISLAM")
+  maritalStatus     String    @default("SINGLE")
+  bloodGroup        String    @default("")
+  nationality       String    @default("Bangladeshi")
+  nidNo             String    @default("")
+  birthRegNo        String    @default("")
+  heightCm          Float?
+  weightKg          Float?
+  identMarkEn       String    @default("")
+  identMarkBn       String    @default("")
+  educationEn       String    @default("")
+  educationBn       String    @default("")
+  childrenCount     Int       @default(0)
+  mobile            String    @default("")
+  emergencyName     String    @default("")
+  emergencyPhone    String    @default("")
+  emergencyRelation String    @default("")
+  referenceName     String    @default("")
+  referenceDetails  String    @default("")
+  experienceYears   Float     @default(0)
+  experienceDetails String    @default("")
+
+  presVillageEn  String @default("")
+  presVillageBn  String @default("")
+  presPostEn     String @default("")
+  presPostBn     String @default("")
+  presThanaEn    String @default("")
+  presThanaBn    String @default("")
+  presDistrictEn String @default("")
+  presDistrictBn String @default("")
+  permVillageEn  String @default("")
+  permVillageBn  String @default("")
+  permPostEn     String @default("")
+  permPostBn     String @default("")
+  permThanaEn    String @default("")
+  permThanaBn    String @default("")
+  permDistrictEn String @default("")
+  permDistrictBn String @default("")
+
+  departmentId  Int
+  department    Department   @relation(fields: [departmentId], references: [id])
+  sectionId     Int
+  section       Section      @relation(fields: [sectionId], references: [id])
+  designationId Int
+  designation   Designation  @relation(fields: [designationId], references: [id])
+  gradeId       Int?
+  grade         Grade?       @relation(fields: [gradeId], references: [id])
+  lineId        Int?
+  line          Line?        @relation(fields: [lineId], references: [id])
+  floorId       Int?
+  floor         Floor?       @relation(fields: [floorId], references: [id])
+  machineTypeId Int?
+  machineType   MachineType? @relation(fields: [machineTypeId], references: [id])
+  shiftId       Int
+  shift         Shift        @relation(fields: [shiftId], references: [id])
+
+  empType          String    @default("WORKER")
+  employmentNature String    @default("PROBATION") // s.4 classification
+  joinDate         DateTime
+  probationEnd     DateTime?
+  confirmDate      DateTime?
+  status           String    @default("ACTIVE") // ACTIVE | SEPARATED
+  separationDate   DateTime? // last working day (mirrors Separation.effectiveDate)
+  weeklyHoliday    Int?
+  otEligible       Boolean   @default(true)
+
+  gross           Float
+  basic           Float
+  houseRent       Float
+  medical         Float
+  transport       Float
+  food            Float
+  otherAllowance  Float    @default(0)
+  salaryEffective DateTime
+  paymentMode     String   @default("CASH") // CASH | BANK | MFS
+  bankName        String   @default("")
+  bankBranch      String   @default("")
+  bankAccountNo   String   @default("")
+  routingNo       String   @default("")
+  mfsProvider     String   @default("")
+  mfsNumber       String   @default("")
+  monthlyTax      Float    @default(0)
+
+  photoPath             String?
+  ageProofType          String    @default("NID")
+  nightConsentDate      DateTime? // Rule 103 / Form 35 (valid 12 months)
+  nightConsentWithdrawn Boolean   @default(false)
+  fitnessCertDate       DateTime? // Form 15
+  appointmentLetterDate DateTime?
+  idCardIssueDate       DateTime? // Form 6
+  nomineeFormDate       DateTime? // Form 41
+  serviceBookDate       DateTime? // Form 7
+
+  elOpening     Float     @default(0)
+  elOpeningDate DateTime?
+  remarks       String    @default("")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  nominees        Nominee[]
+  teams           EmployeeTeam[]
+  devices         EmployeeDevice[]
+  salaryHistory   SalaryHistory[]
+  punches         PunchLog[]
+  attendance      AttendanceDay[]
+  adjustments     AttendanceAdjust[]
+  leaves          LeaveApplication[]
+  payslips        Payslip[]
+  payAdjustments  PayAdjustment[]
+  advances        Advance[]
+  bonusLines      BonusLine[]
+  increments      Increment[]
+  separation      Separation?
+  leftyCases      LeftyCase[]
+  maternityCases  MaternityCase[]
+  elEncashLines   ElEncashLine[]
+
+  @@index([status])
+  @@index([departmentId, sectionId])
+}
+
+model Nominee {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  nameEn       String
+  nameBn       String   @default("")
+  relationEn   String   @default("")
+  relationBn   String   @default("")
+  age          Int?
+  nidNo        String   @default("")
+  addressEn    String   @default("")
+  addressBn    String   @default("")
+  mobile       String   @default("")
+  sharePercent Float    @default(100)
+}
+
+model EmployeeTeam {
+  id            Int       @id @default(autoincrement())
+  employeeId    Int
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  teamId        Int
+  team          Team      @relation(fields: [teamId], references: [id])
+  role          String    @default("MEMBER") // LEADER | MEMBER
+  trainingDate  DateTime?
+  trainedBy     String    @default("")
+  certificateNo String    @default("")
+
+  @@unique([employeeId, teamId])
+}
+
+model EmployeeDevice {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  deviceId   Int
+  device     Device    @relation(fields: [deviceId], references: [id])
+  enrolledAt DateTime  @default(now())
+  removedAt  DateTime?
+
+  @@unique([employeeId, deviceId])
+}
+
+model SalaryHistory {
+  id             Int          @id @default(autoincrement())
+  employeeId     Int
+  employee       Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  effectiveDate  DateTime
+  type           String // JOINING | INCREMENT | PROMOTION | CONFIRMATION | ADJUSTMENT | WAGE_REVISION
+  designationId  Int?
+  designation    Designation? @relation(fields: [designationId], references: [id])
+  gradeId        Int?
+  grade          Grade?       @relation(fields: [gradeId], references: [id])
+  gross          Float
+  basic          Float
+  houseRent      Float
+  medical        Float
+  transport      Float
+  food           Float
+  otherAllowance Float        @default(0)
+  amount         Float        @default(0) // change in gross
+  remarks        String       @default("")
+  createdBy      String       @default("")
+  createdAt      DateTime     @default(now())
+
+  @@index([employeeId, effectiveDate])
+}
+
+// ───────────────────────────── Attendance ─────────────────────────────
+
+// Raw punches are append-only. Corrections are separate MANUAL rows with a reason.
+model PunchLog {
+  id         Int       @id @default(autoincrement())
+  punchId    Int
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  time       DateTime
+  deviceId   Int?
+  device     Device?   @relation(fields: [deviceId], references: [id])
+  source     String    @default("DEVICE") // DEVICE | FILE | MANUAL
+  reason     String    @default("")
+  createdBy  String    @default("")
+  createdAt  DateTime  @default(now())
+
+  @@unique([punchId, time])
+  @@index([employeeId, time])
+  @@index([time])
+}
+
+model AttendanceDay {
+  id          Int       @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  dayType     String // WORKDAY | WEEKEND | HOLIDAY
+  status      String // PRESENT | LATE | ABSENT | LEAVE | OFF
+  leaveCode   String?
+  inTime      DateTime?
+  outTime     DateTime?
+  punchCount  Int       @default(0)
+  singlePunch Boolean   @default(false)
+  lateMin     Int       @default(0)
+  earlyOutMin Int       @default(0)
+  workMin     Int       @default(0)
+  otMin       Int       @default(0)
+  otHours     Float     @default(0)
+  tiffin      Boolean   @default(false)
+  nightBill   Boolean   @default(false)
+  adjusted    Boolean   @default(false)
+  remarks     String    @default("")
+  shiftId     Int?
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+// Manual attendance decisions (e.g. official duty outside, device failure) — always with a reason.
+model AttendanceAdjust {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     String // PRESENT | ABSENT
+  inTime     DateTime?
+  outTime    DateTime?
+  reason     String
+  createdBy  String    @default("")
+  createdAt  DateTime  @default(now())
+
+  @@unique([employeeId, date])
+}
+
+// ───────────────────────────── Leave ─────────────────────────────
+
+model LeaveApplication {
+  id           Int       @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId  Int
+  leaveType    LeaveType @relation(fields: [leaveTypeId], references: [id])
+  fromDate     DateTime
+  toDate       DateTime
+  days         Float
+  reason       String    @default("")
+  appliedOn    DateTime
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  decidedBy    String    @default("")
+  decidedAt    DateTime?
+  decisionNote String    @default("")
+  createdAt    DateTime  @default(now())
+
+  @@index([employeeId, fromDate])
+  @@index([status])
+}
+
+model ElEncashRun {
+  id        Int            @id @default(autoincrement())
+  title     String
+  asOfDate  DateTime
+  status    String         @default("DRAFT") // DRAFT | POSTED
+  createdAt DateTime       @default(now())
+  lines     ElEncashLine[]
+}
+
+model ElEncashLine {
+  id          Int         @id @default(autoincrement())
+  runId       Int
+  run         ElEncashRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId  Int
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  earnedDays  Float
+  availedDays Float
+  balanceDays Float
+  encashDays  Float
+  rate        Float
+  amount      Float
+  stamp       Float
+  net         Float
+
+  @@unique([runId, employeeId])
+}
+
+// ───────────────────────────── Payroll ─────────────────────────────
+
+model PayrollRun {
+  id          Int       @id @default(autoincrement())
+  year        Int
+  month       Int
+  status      String    @default("DRAFT") // DRAFT | PROCESSED | LOCKED
+  processedAt DateTime?
+  processedBy String    @default("")
+  lockedAt    DateTime?
+  lockedBy    String    @default("")
+  paymentDate DateTime?
+  notes       String    @default("")
+  payslips    Payslip[]
+
+  @@unique([year, month])
+}
+
+model Payslip {
+  id            Int          @id @default(autoincrement())
+  runId         Int
+  run           PayrollRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId    Int
+  employee      Employee     @relation(fields: [employeeId], references: [id])
+  departmentId  Int
+  department    Department   @relation(fields: [departmentId], references: [id])
+  sectionId     Int
+  section       Section      @relation(fields: [sectionId], references: [id])
+  designationId Int
+  designation   Designation  @relation(fields: [designationId], references: [id])
+  gradeId       Int?
+  grade         Grade?       @relation(fields: [gradeId], references: [id])
+  lineId        Int?
+  line          Line?        @relation(fields: [lineId], references: [id])
+  empType       String
+  paymentMode   String
+  category      String // REGULAR | NEW_JOIN | SEPARATED | NEW_AND_SEPARATED
+  separationType String?
+
+  gross          Float
+  basic          Float
+  houseRent      Float
+  medical        Float
+  transport      Float
+  food           Float
+  otherAllowance Float
+
+  monthDays       Int
+  employedDays    Int
+  presentDays     Int
+  lateDays        Int
+  absentDays      Int
+  paidLeaveDays   Float
+  unpaidLeaveDays Float
+  weekendDays     Int
+  holidayDays     Int
+  holidayWorkDays Int
+  payableDays     Float
+
+  earnedGross      Float
+  absentDeduction  Float
+  otHours          Float
+  otHoursNormal    Float // within the daily statutory limit
+  otHoursExcess    Float // beyond the daily statutory limit (still paid here)
+  otRate           Float
+  otAmount         Float
+  attendanceBonus  Float
+  holidayAllowance Float
+  arrear           Float
+  otherAddition    Float
+  grossPayable     Float
+  advanceDeduction Float
+  stamp            Float
+  tax              Float
+  otherDeduction   Float
+  totalDeduction   Float
+  netPayable       Float
+
+  @@unique([runId, employeeId])
+  @@index([employeeId])
+}
+
+model PayAdjustment {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  year       Int
+  month      Int
+  kind       String // ARREAR | ADDITION | DEDUCTION
+  amount     Float
+  reason     String
+  createdBy  String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([year, month])
+}
+
+model Advance {
+  id           Int               @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date         DateTime
+  amount       Float
+  installments Int
+  startYear    Int
+  startMonth   Int
+  reason       String            @default("")
+  status       String            @default("ACTIVE") // ACTIVE | CLOSED
+  createdAt    DateTime          @default(now())
+  recoveries   AdvanceRecovery[]
+}
+
+model AdvanceRecovery {
+  id        Int     @id @default(autoincrement())
+  advanceId Int
+  advance   Advance @relation(fields: [advanceId], references: [id], onDelete: Cascade)
+  year      Int
+  month     Int
+  amount    Float
+  source    String  @default("PAYROLL") // PAYROLL | SETTLEMENT | CASH
+
+  @@unique([advanceId, year, month, source])
+}
+
+model BonusRun {
+  id          Int         @id @default(autoincrement())
+  title       String
+  festival    String
+  cutoffDate  DateTime
+  paymentDate DateTime?
+  basis       String      @default("BASIC") // BASIC | GROSS
+  religions   String      @default("ALL") // ALL or comma-separated religion codes
+  slabs       String // JSON [{ "minMonths": 12, "percent": 100 }, …]
+  stamp       Float       @default(0)
+  status      String      @default("DRAFT") // DRAFT | PROCESSED | LOCKED
+  createdAt   DateTime    @default(now())
+  lines       BonusLine[]
+}
+
+model BonusLine {
+  id            Int         @id @default(autoincrement())
+  runId         Int
+  run           BonusRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId    Int
+  employee      Employee    @relation(fields: [employeeId], references: [id])
+  departmentId  Int
+  department    Department  @relation(fields: [departmentId], references: [id])
+  sectionId     Int
+  section       Section     @relation(fields: [sectionId], references: [id])
+  designationId Int
+  designation   Designation @relation(fields: [designationId], references: [id])
+  empType       String
+  paymentMode   String
+  serviceMonths Int
+  basic         Float
+  gross         Float
+  percent       Float
+  amount        Float
+  stamp         Float
+  net           Float
+
+  @@unique([runId, employeeId])
+}
+
+model Increment {
+  id               Int          @id @default(autoincrement())
+  employeeId       Int
+  employee         Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  effectiveDate    DateTime
+  kind             String       @default("ANNUAL") // ANNUAL | PROMOTION | SPECIAL
+  oldDesignationId Int
+  oldDesignation   Designation  @relation("IncrementOldDesignation", fields: [oldDesignationId], references: [id])
+  newDesignationId Int
+  newDesignation   Designation  @relation("IncrementNewDesignation", fields: [newDesignationId], references: [id])
+  oldGradeId       Int?
+  oldGrade         Grade?       @relation("IncrementOldGrade", fields: [oldGradeId], references: [id])
+  newGradeId       Int?
+  newGrade         Grade?       @relation("IncrementNewGrade", fields: [newGradeId], references: [id])
+  oldGross         Float
+  oldBasic         Float
+  oldHouseRent     Float
+  oldMedical       Float
+  oldTransport     Float
+  oldFood          Float
+  newGross         Float
+  newBasic         Float
+  newHouseRent     Float
+  newMedical       Float
+  newTransport     Float
+  newFood          Float
+  percent          Float        @default(0)
+  amount           Float
+  status           String       @default("PROPOSED") // PROPOSED | APPROVED | REJECTED | APPLIED
+  remarks          String       @default("")
+  decidedBy        String       @default("")
+  appliedAt        DateTime?
+  createdAt        DateTime     @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+// ───────────────────────────── Separation ─────────────────────────────
+
+model Separation {
+  id              Int       @id @default(autoincrement())
+  employeeId      Int       @unique
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type            String // RESIGNATION | LEFTY | TERMINATION | DISMISSAL | DISCHARGE | RETRENCHMENT | DEATH | RETIREMENT
+  noticeDate      DateTime?
+  effectiveDate   DateTime // last working day
+  reason          String    @default("")
+  noticeDaysGiven Int       @default(0)
+  diedOnDuty      Boolean   @default(false)
+  createdBy       String    @default("")
+  createdAt       DateTime  @default(now())
+
+  settlementStatus String    @default("PENDING") // PENDING | CALCULATED | PAID
+  serviceText      String    @default("")
+  serviceYears     Float     @default(0)
+  gross            Float     @default(0)
+  basic            Float     @default(0)
+  unpaidDays       Float     @default(0)
+  unpaidSalary     Float     @default(0)
+  unpaidOtHours    Float     @default(0)
+  unpaidOtAmount   Float     @default(0)
+  benefitDays      Float     @default(0)
+  serviceBenefit   Float     @default(0)
+  elDays           Float     @default(0)
+  elAmount         Float     @default(0)
+  noticePayDays    Float     @default(0)
+  noticePay        Float     @default(0)
+  noticeDeductDays Float     @default(0)
+  noticeDeduction  Float     @default(0)
+  advanceDeduction Float     @default(0)
+  otherAddition    Float     @default(0)
+  otherDeduction   Float     @default(0)
+  netPayable       Float     @default(0)
+  calculatedAt     DateTime?
+  paidOn           DateTime?
+  remarks          String    @default("")
+}
+
+// s.27(3A): absence > 10 days ⇒ notice to rejoin (10 days) ⇒ 7 more days ⇒ deemed resignation.
+model LeftyCase {
+  id          Int       @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  absentFrom  DateTime
+  letter1Date DateTime?
+  letter2Date DateTime?
+  letter3Date DateTime?
+  status      String    @default("OPEN") // OPEN | REJOINED | SEPARATED | CANCELLED
+  remarks     String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+}
+
+// ss.45–50: 16 weeks maternity benefit.
+model MaternityCase {
+  id                Int       @id @default(autoincrement())
+  employeeId        Int
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  noticeDate        DateTime
+  expectedDelivery  DateTime
+  actualDelivery    DateTime?
+  leaveFrom         DateTime
+  leaveTo           DateTime
+  serviceMonths     Float
+  survivingChildren Int
+  benefitEligible   Boolean
+  wages3m           Float
+  daysWorked3m      Float
+  avgDailyWage      Float
+  benefitDays       Int       @default(112)
+  totalBenefit      Float
+  firstInstallment  Float
+  firstPaidOn       DateTime?
+  secondInstallment Float
+  secondPaidOn      DateTime?
+  status            String    @default("OPEN") // OPEN | ON_LEAVE | CLOSED
+  remarks           String    @default("")
+  createdAt         DateTime  @default(now())
+}
+
+// ───────────────────────────── Users & audit ─────────────────────────────
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("VIEWER")
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id // SHA-256 of the cookie token
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ip        String   @default("")
+  userAgent String   @default("")
+}
+
+model AuditLog {
+  id       Int      @id @default(autoincrement())
+  at       DateTime @default(now())
+  userId   Int?
+  userName String   @default("")
+  action   String
+  entity   String
+  entityId String   @default("")
+  summary  String   @default("")
+  changes  String   @default("")
+  ip       String   @default("")
+
+  @@index([at])
+  @@index([entity, entityId])
+}

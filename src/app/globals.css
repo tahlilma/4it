@@ -1,0 +1,683 @@
+@import "tailwindcss";
+
+/*
+ * Design language — "Indigo & Cotton".
+ * Apple-grade clarity (grouped lists, translucent chrome, restrained motion) with an identity of its
+ * own, drawn from the garment trade: Bengal indigo for the brand, unbleached cotton for the canvas,
+ * marigold and kantha red as accents. Instrument Sans for interface text (tabular figures for wages),
+ * Fraunces for titles. Every colour token flips for the dark ("night indigo") appearance, so pages
+ * keep using plain utilities (text-stone-500, bg-surface, text-ink-red…).
+ */
+
+@theme inline {
+  --font-sans: var(--font-ui), var(--font-hind), "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-serif), Georgia, "Times New Roman", serif;
+  --font-rounded: var(--font-ui), system-ui, sans-serif;
+  --font-bn: var(--font-hind), var(--font-bengali), "Kohinoor Bangla", "Nirmala UI", "Vrinda", sans-serif;
+}
+
+@theme {
+  /* Hues — used for meaning (status, category), never decoration */
+  --color-hue-blue: #4f55d6;
+  --color-hue-indigo: #2f3c8c;
+  --color-hue-cyan: #2e9bd6;
+  --color-hue-teal: #12a0a0;
+  --color-hue-mint: #22a87f;
+  --color-hue-green: #2e9a55;
+  --color-hue-yellow: #e2a814;
+  --color-hue-orange: #ee8a24;
+  --color-hue-red: #db4632;
+  --color-hue-pink: #dd4c83;
+  --color-hue-purple: #8e52c9;
+  --color-hue-brown: #a87e4a;
+  --color-hue-gray: #7c7f95;
+
+  /* The same hues, dark enough for small text on light surfaces */
+  --color-ink-blue: #3b40c0;
+  --color-ink-indigo: #2a3480;
+  --color-ink-cyan: #11709e;
+  --color-ink-teal: #0b7474;
+  --color-ink-mint: #137456;
+  --color-ink-green: #1f7a41;
+  --color-ink-yellow: #8a6200;
+  --color-ink-orange: #b4570b;
+  --color-ink-red: #b42e1e;
+  --color-ink-pink: #b32863;
+  --color-ink-purple: #6e36a8;
+  --color-ink-brown: #7a5a30;
+  --color-ink-gray: #5c5f73;
+
+  --color-accent: #4549cf;
+
+  /* Cotton surfaces, indigo ink */
+  --color-bg: #f5f3ee;
+  --color-surface: #ffffff;
+  --color-surface-2: #faf9f6;
+  --color-elevated: #ffffff;
+  --color-thumb: #ffffff;
+  --color-label: #1a1b2e;
+  --color-label-2: #62637a;
+  --color-label-3: #9c9dae;
+  --color-sep: rgb(26 27 46 / 0.08);
+  --color-sep-strong: rgb(26 27 46 / 0.15);
+  --color-fill: rgb(26 27 46 / 0.1);
+  --color-fill-2: rgb(26 27 46 / 0.08);
+  --color-fill-3: rgb(26 27 46 / 0.055);
+  --color-fill-4: rgb(26 27 46 / 0.035);
+  --color-material: rgb(247 245 240 / 0.78);
+  --color-material-thick: rgb(247 245 240 / 0.94);
+  --color-canvas: var(--color-bg);
+  --color-ink: var(--color-label);
+
+  /* The indigo sidebar ("denim") */
+  --color-side: #1b1e48;
+  --color-side-2: #23275a;
+  --color-side-ink: rgb(236 237 255 / 0.94);
+  --color-side-ink-2: rgb(196 200 245 / 0.62);
+  --color-side-hover: rgb(255 255 255 / 0.07);
+  --color-side-pill: #f5f3ee;
+  --color-side-pill-ink: #1a1b2e;
+
+  /* Neutral scale: warm cotton greys with an indigo cast */
+  --color-stone-50: #faf9f6;
+  --color-stone-100: #f1efea;
+  --color-stone-200: #e4e2dc;
+  --color-stone-300: #cfcdc6;
+  --color-stone-400: #9c9dae;
+  --color-stone-500: #6e7084;
+  --color-stone-600: #55576b;
+  --color-stone-700: #3e4054;
+  --color-stone-800: #2a2c3f;
+  --color-stone-900: #1a1b2e;
+  --color-stone-950: #0e0f1c;
+
+  /* "brand" = indigo */
+  --color-brand-50: #f1f2fe;
+  --color-brand-100: #e3e6fc;
+  --color-brand-200: #c8cdf9;
+  --color-brand-300: #a3aaf3;
+  --color-brand-400: #7a82ea;
+  --color-brand-500: #5a61df;
+  --color-brand-600: #4549cf;
+  --color-brand-700: #3a3bb0;
+  --color-brand-800: #30328c;
+  --color-brand-900: #272a6b;
+  --color-brand-950: #161842;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dark appearance ("night indigo") — screen only, so printing always uses paper-like values. */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --color-hue-blue: #7c83ff;
+    --color-hue-indigo: #8c9bff;
+    --color-hue-cyan: #5cc2f2;
+    --color-hue-teal: #3cd3cf;
+    --color-hue-mint: #4fd6aa;
+    --color-hue-green: #4cc979;
+    --color-hue-yellow: #f5c84a;
+    --color-hue-orange: #ffa94d;
+    --color-hue-red: #ff6b57;
+    --color-hue-pink: #ff79a8;
+    --color-hue-purple: #b98bf0;
+    --color-hue-brown: #cda36e;
+    --color-hue-gray: #9a9db5;
+
+    --color-ink-blue: #a3a8ff;
+    --color-ink-indigo: #a8b3ff;
+    --color-ink-cyan: #7fd3f7;
+    --color-ink-teal: #6be0dc;
+    --color-ink-mint: #6ee0ba;
+    --color-ink-green: #6fd993;
+    --color-ink-yellow: #f7d16b;
+    --color-ink-orange: #ffbe7a;
+    --color-ink-red: #ff8a7a;
+    --color-ink-pink: #ff9ac0;
+    --color-ink-purple: #cfa8f7;
+    --color-ink-brown: #ddb98a;
+    --color-ink-gray: #b4b6ca;
+
+    --color-accent: #5a61e6;
+
+    --color-bg: #0d0f1d;
+    --color-surface: #161928;
+    --color-surface-2: #1c2033;
+    --color-elevated: #1f2338;
+    --color-thumb: #2c3150;
+    --color-label: #eeeff7;
+    --color-label-2: #a4a6be;
+    --color-label-3: #6e7190;
+    --color-sep: rgb(255 255 255 / 0.07);
+    --color-sep-strong: rgb(255 255 255 / 0.14);
+    --color-fill: rgb(255 255 255 / 0.12);
+    --color-fill-2: rgb(255 255 255 / 0.09);
+    --color-fill-3: rgb(255 255 255 / 0.065);
+    --color-fill-4: rgb(255 255 255 / 0.04);
+    --color-material: rgb(18 21 36 / 0.74);
+    --color-material-thick: rgb(18 21 36 / 0.94);
+
+    --color-side: #111433;
+    --color-side-2: #171b42;
+    --color-side-pill: #e9e8f2;
+
+    --color-stone-50: #1a1d2e;
+    --color-stone-100: #20243a;
+    --color-stone-200: #2b3049;
+    --color-stone-300: #3a3f5c;
+    --color-stone-400: #6e7190;
+    --color-stone-500: #9295b0;
+    --color-stone-600: #aeb0c7;
+    --color-stone-700: #c8cadb;
+    --color-stone-800: #e1e2ec;
+    --color-stone-900: #eeeff7;
+    --color-stone-950: #ffffff;
+
+    --color-brand-50: #191b3a;
+    --color-brand-100: #20244d;
+    --color-brand-200: #2a2f66;
+    --color-brand-300: #3b4290;
+    --color-brand-400: #5b63d9;
+    --color-brand-500: #6f77f0;
+    --color-brand-600: #7c83ff;
+    --color-brand-700: #a3a8ff;
+    --color-brand-800: #c3c7ff;
+    --color-brand-900: #dfe1ff;
+    --color-brand-950: #eef0ff;
+  }
+}
+
+@media screen and (prefers-contrast: more) {
+  :root {
+    --color-label-2: #45465a;
+    --color-label-3: #6e7084;
+    --color-sep: rgb(26 27 46 / 0.22);
+    --color-sep-strong: rgb(26 27 46 / 0.4);
+  }
+}
+
+html {
+  color-scheme: light dark;
+  background-color: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--color-bg);
+  color: var(--color-label);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Unbleached-cotton canvas: a whisper of indigo light at the top. */
+.cotton {
+  background-image:
+    radial-gradient(1000px 420px at 12% -10%, rgb(69 73 207 / 0.06), transparent 65%),
+    radial-gradient(800px 380px at 100% -8%, rgb(238 138 36 / 0.045), transparent 60%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* Denim: indigo with a fine right-hand twill — used for the sidebar and hero panels. */
+.denim {
+  background-color: var(--color-side);
+  background-image:
+    radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.07), transparent 60%),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.028) 0 1px, transparent 1px 5px);
+  color: var(--color-side-ink);
+}
+
+::selection {
+  background: rgb(238 138 36 / 0.28);
+}
+
+.font-bn {
+  font-family: var(--font-bn);
+  letter-spacing: 0;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 30;
+  letter-spacing: -0.012em;
+}
+
+/* Native file pickers get a quiet secondary button */
+input[type="file"] {
+  @apply max-w-full text-[13px] text-label-2;
+}
+input[type="file"]::file-selector-button {
+  @apply mr-3 cursor-pointer rounded-[8px] border-0 bg-surface px-3 py-1.5 text-[13px] font-medium text-label ring-1 ring-sep-strong ring-inset transition-colors;
+}
+input[type="file"]::file-selector-button:hover {
+  @apply bg-surface-2;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-accent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-fill) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  /* ── Buttons: tactile, quick ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-[10px] px-3.5 py-[7px] text-[14px] leading-5 font-medium whitespace-nowrap select-none;
+    @apply transition-[transform,background-color,box-shadow,filter,color] duration-150 ease-out active:scale-[0.98];
+    @apply disabled:pointer-events-none disabled:opacity-45;
+    touch-action: manipulation;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:brightness-110 active:brightness-95;
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 1px 2px rgb(26 27 46 / 0.2),
+      0 6px 14px -6px rgb(69 73 207 / 0.55);
+  }
+  /* Rings and shadows are both box-shadow: set them through utilities so they combine. */
+  .btn-secondary {
+    @apply bg-surface text-label shadow-[0_1px_2px_rgb(26_27_46/0.06)] ring-1 ring-sep-strong ring-inset hover:bg-surface-2 dark:shadow-none;
+  }
+  .btn-danger {
+    @apply bg-hue-red/10 text-ink-red hover:bg-hue-red/16 active:bg-hue-red/22;
+  }
+  .btn-success {
+    @apply bg-hue-green text-white hover:brightness-105 active:brightness-95;
+    background-image: linear-gradient(to bottom, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 1px 2px rgb(26 27 46 / 0.2),
+      0 6px 14px -6px rgb(46 154 85 / 0.5);
+  }
+  .btn-ghost {
+    @apply text-ink-blue hover:bg-fill-4 active:bg-fill-3;
+  }
+  .btn-sm {
+    @apply rounded-[8px] px-2.5 py-[3px] text-[13px];
+  }
+
+  /* ── Fields ── */
+  .input {
+    @apply block w-full appearance-none rounded-[10px] border-0 bg-surface px-3 py-[7px] text-[16px] leading-5 text-label ring-1 ring-sep-strong ring-inset sm:text-[14px];
+    @apply transition-[box-shadow,background-color] duration-150 placeholder:text-label-3 hover:ring-label-3/60;
+    @apply focus:ring-2 focus:ring-accent focus:outline-none;
+    @apply disabled:bg-surface-2 disabled:text-label-2;
+    @apply aria-invalid:bg-hue-red/5 aria-invalid:ring-2 aria-invalid:ring-hue-red/70;
+    @apply shadow-[inset_0_1px_1px_rgb(26_27_46/0.04)] focus:shadow-[0_0_0_4px_rgb(69_73_207/0.14)] dark:shadow-none dark:focus:shadow-[0_0_0_4px_rgb(124_131_255/0.2)];
+  }
+  select.input {
+    @apply pr-8;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 16' fill='none' stroke='%239c9dae' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6l3-3 3 3M3 10l3 3 3-3'/%3E%3C/svg%3E");
+    background-position: right 0.65rem center;
+    background-repeat: no-repeat;
+    background-size: 0.6rem 0.8rem;
+  }
+  textarea.input {
+    @apply leading-normal;
+  }
+  .label {
+    @apply mb-1.5 block text-[12.5px] font-medium text-label-2;
+  }
+
+  /* Switch for on/off settings */
+  .switch {
+    @apply relative inline-block h-[22px] w-[38px] shrink-0 cursor-pointer appearance-none rounded-full bg-fill outline-none;
+    transition: background-color 0.18s ease;
+  }
+  .switch::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: 18px;
+    width: 18px;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow:
+      0 2px 5px rgb(0 0 0 / 0.16),
+      0 0 0 0.5px rgb(0 0 0 / 0.06);
+    transition: transform 0.22s var(--ease-out-quint);
+  }
+  .switch:checked {
+    @apply bg-accent;
+  }
+  .switch:checked::before {
+    transform: translateX(16px);
+  }
+  .switch:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* ── Containers ── */
+  .card {
+    @apply overflow-hidden rounded-[16px] bg-surface shadow-[0_1px_2px_rgb(26_27_46/0.04),0_10px_28px_-16px_rgb(26_27_46/0.12)] ring-1 ring-stone-900/[0.06] dark:shadow-[0_1px_2px_rgb(0_0_0/0.3)];
+  }
+  .card-h {
+    @apply flex items-center justify-between gap-3 px-5 pt-4 pb-2.5;
+  }
+  .card-b {
+    @apply p-5;
+  }
+
+  /* ── Tables ── */
+  .tbl {
+    @apply w-full border-collapse text-[14px];
+  }
+  .tbl th {
+    @apply border-b border-sep px-3.5 py-2.5 text-left text-[11px] font-semibold tracking-[0.06em] whitespace-nowrap text-label-3 uppercase first:pl-5 last:pr-5;
+  }
+  .tbl td {
+    @apply border-b border-sep px-3.5 py-2.5 align-top first:pl-5 last:pr-5;
+  }
+  .tbl tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .tbl tbody tr:hover td {
+    @apply bg-fill-4;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-[2px] align-middle font-sans text-[12px] leading-4 font-medium tracking-normal whitespace-nowrap;
+  }
+  .link {
+    @apply text-ink-blue underline-offset-2 hover:underline;
+  }
+  .chip {
+    @apply flex shrink-0 items-center justify-center rounded-[10px];
+  }
+  /* Soft icon tile: tinted square, coloured glyph */
+  .tile {
+    @apply flex shrink-0 items-center justify-center;
+  }
+
+  /* Translucent chrome */
+  .material {
+    background-color: var(--color-material);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+  }
+  .material-edge {
+    box-shadow:
+      inset 0 0.5px 0 rgb(255 255 255 / 0.6),
+      0 0 0 0.5px rgb(26 27 46 / 0.08),
+      0 12px 32px -14px rgb(26 27 46 / 0.24);
+  }
+
+  /* Small caps eyebrow */
+  .eyebrow {
+    @apply text-[11.5px] font-semibold tracking-[0.12em] uppercase;
+  }
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  .material-edge {
+    box-shadow:
+      inset 0 0.5px 0 rgb(255 255 255 / 0.1),
+      0 0 0 0.5px rgb(255 255 255 / 0.07),
+      0 12px 32px -14px rgb(0 0 0 / 0.7);
+  }
+  .cotton {
+    background-image:
+      radial-gradient(1000px 420px at 12% -10%, rgb(124 131 255 / 0.1), transparent 65%),
+      radial-gradient(800px 380px at 100% -8%, rgb(255 169 77 / 0.05), transparent 60%);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material {
+    background-color: var(--color-material-thick);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Content settles in on arrival — short, no bounce. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.page-in > * > * {
+  animation: rise 0.42s var(--ease-out-quint) both;
+}
+.page-in > * > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.page-in > * > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+.page-in > * > *:nth-child(4) {
+  animation-delay: 0.12s;
+}
+.page-in > * > *:nth-child(n + 5) {
+  animation-delay: 0.16s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .press {
+    transform: none !important;
+  }
+  .page-in > * > * {
+    animation: none;
+  }
+  .switch::before {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* Alert dialog: materialises (scale + fade) over a dimmed page */
+dialog.alert {
+  opacity: 0;
+  transform: scale(0.97);
+  transition:
+    opacity 0.18s ease,
+    transform 0.26s var(--ease-out-quint),
+    overlay 0.18s allow-discrete,
+    display 0.18s allow-discrete;
+}
+dialog.alert[open] {
+  opacity: 1;
+  transform: scale(1);
+}
+@starting-style {
+  dialog.alert[open] {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+dialog.alert::backdrop {
+  background: rgb(13 15 29 / 0);
+  transition:
+    background-color 0.18s ease,
+    overlay 0.18s allow-discrete,
+    display 0.18s allow-discrete;
+}
+dialog.alert[open]::backdrop {
+  background: rgb(13 15 29 / 0.38);
+}
+@starting-style {
+  dialog.alert[open]::backdrop {
+    background: rgb(13 15 29 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.alert,
+  dialog.alert[open] {
+    transform: none;
+  }
+}
+
+/* Loading placeholders */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-fill-4);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: shimmer 1.5s infinite;
+}
+@media screen and (prefers-color-scheme: dark) {
+  .shimmer::after {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.05), transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+  }
+}
+
+/* ───────────────────── Printed reports & documents ───────────────────── */
+
+.doc {
+  color: #000;
+  background: #fff;
+  font-family: Arial, "Helvetica Neue", var(--font-bengali), sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+.doc .font-bn {
+  font-family: var(--font-bengali), "Nirmala UI", "Vrinda", sans-serif;
+}
+/* Bordered document table. (Not named "grid": that is Tailwind's display:grid utility.) */
+.doc table.dt {
+  width: 100%;
+  border-collapse: collapse;
+}
+.doc table.dt th,
+.doc table.dt td {
+  border: 1px solid #333;
+  padding: 2px 4px;
+}
+.doc table.dt th {
+  background: #f1f1f1;
+  font-weight: 600;
+  text-align: center;
+}
+.doc .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.doc .center {
+  text-align: center;
+}
+.sheet {
+  color-scheme: light;
+  color: #000;
+  background: #fff;
+  margin: 0 auto 18px;
+  padding: 10mm;
+  border-radius: 4px;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 18px 40px -20px rgb(0 0 0 / 0.3);
+}
+.sheet.a4p {
+  width: 210mm;
+  min-height: 297mm;
+}
+.sheet.a4l {
+  width: 297mm;
+  min-height: 210mm;
+}
+.sheet.legall {
+  width: 356mm;
+  min-height: 216mm;
+}
+.sheet.auto {
+  width: 100%;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 8mm;
+}
+@page a4l {
+  size: A4 landscape;
+  margin: 8mm;
+}
+@page legall {
+  size: legal landscape;
+  margin: 7mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #000;
+  }
+  .cotton {
+    background-image: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .page-in > * > * {
+    animation: none !important;
+  }
+  .print-reset {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+  .sheet {
+    box-shadow: none;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    width: auto !important;
+    min-height: 0 !important;
+  }
+  .sheet.a4l {
+    page: a4l;
+  }
+  .sheet.legall {
+    page: legall;
+  }
+  .page-break {
+    break-after: page;
+  }
+  .avoid-break {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+}
